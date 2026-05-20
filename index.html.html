@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OptiPymes – Sistema de Gestión de Procesos Productivos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #F4F1EC;
+    --surface: #FAFAF7;
+    --border: #D6D0C4;
+    --text: #1A1A1A;
+    --text-muted: #6B6560;
+    --accent: #1B3A6B;
+    --accent-light: #E8EDF5;
+    --accent2: #C8401A;
+    --success: #2D6A4F;
+    --warn: #C8401A;
+    --ok: #2D6A4F;
+    --font: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: var(--bg);
+  }
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 48px 52px;
+    width: 420px;
+  }
+  .login-logo {
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 6px; font-weight: 500;
+  }
+  .login-title {
+    font-size: 26px; font-weight: 700; color: var(--accent);
+    margin-bottom: 4px; line-height: 1.2;
+  }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 36px; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+    background: var(--bg); font-family: var(--font); font-size: 14px;
+    color: var(--text); outline: none; transition: border-color .2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; padding: 12px; background: var(--accent); color: #fff;
+    border: none; font-family: var(--font); font-size: 14px; font-weight: 600;
+    letter-spacing: 0.05em; cursor: pointer; transition: opacity .2s;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .login-hint { font-size: 11px; color: var(--text-muted); margin-top: 16px; text-align: center; }
+
+  /* ── APP SHELL ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    background: var(--accent); color: #fff; padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 52px; position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; }
+  .topbar-brand span { font-weight: 300; opacity: .7; }
+  .topbar-right { display: flex; align-items: center; gap: 20px; }
+  .topbar-user { font-size: 12px; opacity: .8; }
+  .btn-logout {
+    font-size: 11px; background: rgba(255,255,255,0.15); border: none;
+    color: #fff; padding: 5px 12px; cursor: pointer; font-family: var(--font);
+    font-weight: 500; letter-spacing: 0.05em;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+  .layout { display: flex; flex: 1; }
+
+  .sidebar {
+    width: 210px; background: var(--surface); border-right: 1px solid var(--border);
+    padding: 20px 0; flex-shrink: 0;
+  }
+  .nav-section { padding: 0 16px; margin-bottom: 4px;
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 600; margin-top: 16px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background .15s, color .15s;
+    color: var(--text-muted); border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: var(--accent-light); color: var(--accent); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent);
+    border-left-color: var(--accent); font-weight: 600; }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+  .main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+  /* ── PANELS ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .page-title {
+    font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 4px;
+  }
+  .page-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+  /* ── DASHBOARD CARDS ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border); padding: 20px 22px;
+  }
+  .kpi-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
+  .kpi-value { font-size: 30px; font-weight: 700; font-family: var(--mono);
+    color: var(--accent); line-height: 1; }
+  .kpi-value.warn { color: var(--warn); }
+  .kpi-value.ok { color: var(--success); }
+  .kpi-meta { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .kpi-bar { height: 4px; background: var(--border); margin-top: 10px; }
+  .kpi-fill { height: 100%; background: var(--accent); transition: width .6s; }
+  .kpi-fill.warn { background: var(--warn); }
+  .kpi-fill.ok { background: var(--success); }
+
+  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; }
+  .chart-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; }
+
+  /* ── TABLE ── */
+  .table-card { background: var(--surface); border: 1px solid var(--border); }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; }
+  .table-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 600; padding: 10px 16px;
+    text-align: left; border-bottom: 1px solid var(--border); background: var(--bg); }
+  td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--accent-light); }
+  .badge {
+    display: inline-block; padding: 2px 10px; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .badge-ok { background: #D4EDDA; color: var(--success); }
+  .badge-warn { background: #FAE0D8; color: var(--warn); }
+  .badge-info { background: var(--accent-light); color: var(--accent); }
+
+  /* ── FORM ── */
+  .form-card { background: var(--surface); border: 1px solid var(--border); padding: 28px; max-width: 680px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 9px 12px; border: 1px solid var(--border);
+    background: var(--bg); font-family: var(--font); font-size: 13px;
+    color: var(--text); outline: none; transition: border-color .2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .btn-calc {
+    margin-top: 20px; padding: 11px 28px; background: var(--accent); color: #fff;
+    border: none; font-family: var(--font); font-size: 13px; font-weight: 600;
+    letter-spacing: 0.05em; cursor: pointer; transition: opacity .2s;
+  }
+  .btn-calc:hover { opacity: 0.88; }
+  .result-box {
+    margin-top: 24px; padding: 20px 24px; background: var(--accent-light);
+    border: 1px solid #C5D4E8; display: none;
+  }
+  .result-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .result-item { text-align: center; }
+  .result-val { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .result-val.warn { color: var(--warn); }
+  .result-val.ok { color: var(--success); }
+  .result-lbl { font-size: 10px; color: var(--text-muted); font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
+  .alert-box { margin-top: 14px; padding: 10px 14px; font-size: 12px;
+    border-left: 3px solid var(--warn); background: #FAE0D8; color: var(--warn); font-weight: 500; }
+  .alert-ok { border-left-color: var(--success); background: #D4EDDA; color: var(--success); }
+
+  /* ── USERS ── */
+  .users-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .user-card {
+    background: var(--surface); border: 1px solid var(--border); padding: 20px;
+  }
+  .user-avatar {
+    width: 44px; height: 44px; background: var(--accent); color: #fff;
+    font-size: 16px; font-weight: 700; display: flex; align-items: center;
+    justify-content: center; margin-bottom: 12px;
+  }
+  .user-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .user-role { font-size: 11px; color: var(--text-muted); font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+  .user-detail { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+
+  /* ── 5S CHECKLIST ── */
+  .ss-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  .ss-card { background: var(--surface); border: 1px solid var(--border); padding: 16px; }
+  .ss-letter { font-size: 28px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
+  .ss-name { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 10px; }
+  .ss-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+  .ss-item input[type=checkbox] { margin-top: 2px; accent-color: var(--accent); }
+  .ss-item label { font-size: 12px; cursor: pointer; line-height: 1.4; }
+  .ss-score { font-size: 20px; font-weight: 700; font-family: var(--mono);
+    color: var(--accent); margin-top: 10px; }
+
+  /* ── REPORTE ── */
+  .report-card { background: var(--surface); border: 1px solid var(--border); padding: 28px; }
+  .report-header { border-bottom: 2px solid var(--accent); padding-bottom: 16px; margin-bottom: 20px; }
+  .report-empresa { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .report-period { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .report-section { margin-bottom: 20px; }
+  .report-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border);
+    padding-bottom: 6px; margin-bottom: 12px; }
+  .report-row { display: flex; justify-content: space-between; padding: 6px 0;
+    border-bottom: 1px dotted var(--border); font-size: 13px; }
+  .report-row:last-child { border-bottom: none; }
+  .report-row-label { color: var(--text-muted); }
+  .report-row-val { font-weight: 600; font-family: var(--mono); }
+  .btn-print { padding: 9px 22px; background: transparent; border: 1px solid var(--accent);
+    color: var(--accent); font-family: var(--font); font-size: 12px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.06em; transition: all .2s; }
+  .btn-print:hover { background: var(--accent); color: #fff; }
+
+  .section-divider { height: 1px; background: var(--border); margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ LOGIN ═══════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">ACA 3 · Ingeniería Industrial</div>
+    <div class="login-title">OptiPymes</div>
+    <div class="login-sub">Sistema de Gestión y Optimización de Procesos Productivos</div>
+
+    <div class="field">
+      <label>Usuario</label>
+      <input type="text" id="login-user" value="supervisor" placeholder="usuario">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" value="12345" placeholder="contraseña">
+    </div>
+    <div class="field">
+      <label>Rol</label>
+      <select id="login-rol">
+        <option value="Supervisor de Producción">Supervisor de Producción</option>
+        <option value="Gerente General">Gerente General</option>
+        <option value="Operario">Operario</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Ingresar al Sistema</button>
+    <div class="login-hint">Demo: usuario <b>supervisor</b> · contraseña <b>12345</b></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ APP ═══════════════════════════ -->
+<div id="app" style="display:none; flex-direction:column; min-height:100vh;">
+
+  <div class="topbar">
+    <div class="topbar-brand">OptiPymes <span>· Gestión de Procesos</span></div>
+    <div class="topbar-right">
+      <div class="topbar-user" id="topbar-user-label">—</div>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="showPanel('dashboard', this)">
+        <span class="nav-icon">📊</span> Dashboard OEE
+      </div>
+      <div class="nav-item" onclick="showPanel('registro', this)">
+        <span class="nav-icon">📋</span> Registro Producción
+      </div>
+
+      <div class="nav-section">Herramientas</div>
+      <div class="nav-item" onclick="showPanel('5s', this)">
+        <span class="nav-icon">✅</span> Checklist 5S
+      </div>
+      <div class="nav-item" onclick="showPanel('reporte', this)">
+        <span class="nav-icon">📄</span> Reporte Semanal
+      </div>
+
+      <div class="nav-section">Administración</div>
+      <div class="nav-item" onclick="showPanel('usuarios', this)">
+        <span class="nav-icon">👥</span> Usuarios / Roles
+      </div>
+    </div>
+
+    <div class="main">
+
+      <!-- ── DASHBOARD ── -->
+      <div id="panel-dashboard" class="panel active">
+        <div class="page-title">Tablero de Indicadores OEE</div>
+        <div class="page-sub">Semana 19 · 2026 — PYME Sector Confecciones, Bogotá D.C.</div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">OEE Global</div>
+            <div class="kpi-value warn" id="kpi-oee">72.4%</div>
+            <div class="kpi-meta">Meta: ≥ 85%</div>
+            <div class="kpi-bar"><div class="kpi-fill warn" style="width:72.4%"></div></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Disponibilidad</div>
+            <div class="kpi-value ok" id="kpi-disp">89.1%</div>
+            <div class="kpi-meta">Meta: ≥ 85%</div>
+            <div class="kpi-bar"><div class="kpi-fill ok" style="width:89.1%"></div></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Rendimiento</div>
+            <div class="kpi-value ok" id="kpi-rend">84.3%</div>
+            <div class="kpi-meta">Meta: ≥ 80%</div>
+            <div class="kpi-bar"><div class="kpi-fill ok" style="width:84.3%"></div></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Calidad</div>
+            <div class="kpi-value ok" id="kpi-cal">96.5%</div>
+            <div class="kpi-meta">Meta: ≥ 95%</div>
+            <div class="kpi-bar"><div class="kpi-fill ok" style="width:96.5%"></div></div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-title">Tendencia OEE — Últimas 8 semanas</div>
+            <canvas id="chart-tendencia" height="120"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Componentes OEE</div>
+            <canvas id="chart-componentes" height="120"></canvas>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Líneas de Producción — Estado Actual</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Línea</th><th>Producto</th><th>Unid. Producidas</th>
+                <th>OEE</th><th>Cuello de Botella</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>L-01</strong></td><td>Pantalón Jean</td><td>248</td>
+                <td><span style="font-family:var(--mono);font-weight:600;">72.4%</span></td>
+                <td>Etapa Ensamble</td>
+                <td><span class="badge badge-warn">⚠ Alerta</span></td>
+              </tr>
+              <tr>
+                <td><strong>L-02</strong></td><td>Camiseta Básica</td><td>412</td>
+                <td><span style="font-family:var(--mono);font-weight:600;">88.1%</span></td>
+                <td>—</td>
+                <td><span class="badge badge-ok">✓ Normal</span></td>
+              </tr>
+              <tr>
+                <td><strong>L-03</strong></td><td>Chaqueta Impermeable</td><td>91</td>
+                <td><span style="font-family:var(--mono);font-weight:600;">61.3%</span></td>
+                <td>Control de Calidad</td>
+                <td><span class="badge badge-warn">⚠ Crítico</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── REGISTRO PRODUCCIÓN ── -->
+      <div id="panel-registro" class="panel">
+        <div class="page-title">Registro de Orden de Trabajo</div>
+        <div class="page-sub">Ingrese los datos de producción para calcular el OEE de la línea.</div>
+
+        <div class="form-card">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Fecha</label>
+              <input type="date" id="r-fecha">
+            </div>
+            <div class="form-group">
+              <label>Línea de producción</label>
+              <select id="r-linea">
+                <option>L-01 · Pantalón Jean</option>
+                <option>L-02 · Camiseta Básica</option>
+                <option>L-03 · Chaqueta Impermeable</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tiempo planificado (min)</label>
+              <input type="number" id="r-tplan" placeholder="480" value="480">
+            </div>
+            <div class="form-group">
+              <label>Tiempo de paradas (min)</label>
+              <input type="number" id="r-tparo" placeholder="52" value="52">
+            </div>
+            <div class="form-group">
+              <label>Unidades producidas (real)</label>
+              <input type="number" id="r-uprod" placeholder="248" value="248">
+            </div>
+            <div class="form-group">
+              <label>Unidades teóricas (capacidad)</label>
+              <input type="number" id="r-uteo" placeholder="294" value="294">
+            </div>
+            <div class="form-group">
+              <label>Unidades con defecto</label>
+              <input type="number" id="r-udef" placeholder="8" value="8">
+            </div>
+            <div class="form-group">
+              <label>Motivo de parada</label>
+              <select id="r-motivo">
+                <option>Falla mecánica</option>
+                <option>Cambio de referencia</option>
+                <option>Falta de material</option>
+                <option>Mantenimiento preventivo</option>
+                <option>Otro</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-calc" onclick="calcularOEE()">Calcular OEE</button>
+
+          <div class="result-box" id="result-box">
+            <div class="result-title">Resultado del Cálculo — OEE</div>
+            <div class="result-grid">
+              <div class="result-item">
+                <div class="result-val" id="res-disp">—</div>
+                <div class="result-lbl">Disponibilidad</div>
+              </div>
+              <div class="result-item">
+                <div class="result-val" id="res-rend">—</div>
+                <div class="result-lbl">Rendimiento</div>
+              </div>
+              <div class="result-item">
+                <div class="result-val" id="res-cal">—</div>
+                <div class="result-lbl">Calidad</div>
+              </div>
+            </div>
+            <div style="text-align:center; margin-top:18px;">
+              <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">OEE TOTAL</div>
+              <div id="res-oee" style="font-size:44px;font-weight:700;font-family:var(--mono);color:var(--accent);"></div>
+            </div>
+            <div class="alert-box" id="res-alerta" style="display:none;"></div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="page-title" style="font-size:15px;margin-bottom:4px;">Historial de Registros</div>
+        <div class="table-card" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr><th>Fecha</th><th>Línea</th><th>Disponib.</th><th>Rendim.</th><th>Calidad</th><th>OEE</th></tr>
+            </thead>
+            <tbody id="hist-tbody">
+              <tr><td>2026-05-12</td><td>L-01</td><td>89.1%</td><td>84.3%</td><td>96.5%</td><td><strong>72.4%</strong></td></tr>
+              <tr><td>2026-05-11</td><td>L-02</td><td>92.0%</td><td>87.5%</td><td>98.1%</td><td><strong>79.2%</strong></td></tr>
+              <tr><td>2026-05-10</td><td>L-03</td><td>75.0%</td><td>81.0%</td><td>98.9%</td><td><strong>60.1%</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── CHECKLIST 5S ── -->
+      <div id="panel-5s" class="panel">
+        <div class="page-title">Checklist Metodología 5S</div>
+        <div class="page-sub">Auditoría del entorno productivo. Marque los ítems cumplidos.</div>
+
+        <div class="ss-grid">
+          <div class="ss-card">
+            <div class="ss-letter">S1</div>
+            <div class="ss-name">Seiri — Clasificar</div>
+            <div class="ss-item"><input type="checkbox" id="s1a" onchange="calcS()"><label for="s1a">Solo elementos necesarios en el área</label></div>
+            <div class="ss-item"><input type="checkbox" id="s1b" onchange="calcS()"><label for="s1b">Materiales obsoletos retirados</label></div>
+            <div class="ss-item"><input type="checkbox" id="s1c" onchange="calcS()"><label for="s1c">Herramientas identificadas y clasificadas</label></div>
+            <div class="ss-score" id="score-s1">0/3</div>
+          </div>
+          <div class="ss-card">
+            <div class="ss-letter">S2</div>
+            <div class="ss-name">Seiton — Ordenar</div>
+            <div class="ss-item"><input type="checkbox" id="s2a" onchange="calcS()"><label for="s2a">Cada elemento en su lugar definido</label></div>
+            <div class="ss-item"><input type="checkbox" id="s2b" onchange="calcS()"><label for="s2b">Pasillos despejados y señalizados</label></div>
+            <div class="ss-item"><input type="checkbox" id="s2c" onchange="calcS()"><label for="s2c">Etiquetado visible de zonas</label></div>
+            <div class="ss-score" id="score-s2">0/3</div>
+          </div>
+          <div class="ss-card">
+            <div class="ss-letter">S3</div>
+            <div class="ss-name">Seiso — Limpiar</div>
+            <div class="ss-item"><input type="checkbox" id="s3a" onchange="calcS()"><label for="s3a">Área de trabajo limpia al finalizar turno</label></div>
+            <div class="ss-item"><input type="checkbox" id="s3b" onchange="calcS()"><label for="s3b">Máquinas limpias y sin residuos</label></div>
+            <div class="ss-item"><input type="checkbox" id="s3c" onchange="calcS()"><label for="s3c">Plan de limpieza documentado</label></div>
+            <div class="ss-score" id="score-s3">0/3</div>
+          </div>
+          <div class="ss-card">
+            <div class="ss-letter">S4</div>
+            <div class="ss-name">Seiketsu — Estandarizar</div>
+            <div class="ss-item"><input type="checkbox" id="s4a" onchange="calcS()"><label for="s4a">Procedimientos visibles en el área</label></div>
+            <div class="ss-item"><input type="checkbox" id="s4b" onchange="calcS()"><label for="s4b">Checklist de auditoría actualizado</label></div>
+            <div class="ss-item"><input type="checkbox" id="s4c" onchange="calcS()"><label for="s4c">Responsables asignados por zona</label></div>
+            <div class="ss-score" id="score-s4">0/3</div>
+          </div>
+          <div class="ss-card">
+            <div class="ss-letter">S5</div>
+            <div class="ss-name">Shitsuke — Disciplinar</div>
+            <div class="ss-item"><input type="checkbox" id="s5a" onchange="calcS()"><label for="s5a">Personal capacitado en 5S</label></div>
+            <div class="ss-item"><input type="checkbox" id="s5b" onchange="calcS()"><label for="s5b">Auditorías semanales realizadas</label></div>
+            <div class="ss-item"><input type="checkbox" id="s5c" onchange="calcS()"><label for="s5c">Mejoras registradas y comunicadas</label></div>
+            <div class="ss-score" id="score-s5">0/3</div>
+          </div>
+        </div>
+
+        <div class="form-card" style="max-width:100%;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Puntaje Global 5S</div>
+              <div id="score-global" style="font-size:42px;font-weight:700;font-family:var(--mono);color:var(--accent);">0 / 15</div>
+            </div>
+            <div id="score-nivel" style="font-size:14px;font-weight:600;color:var(--text-muted);">Sin evaluar</div>
+          </div>
+          <div class="kpi-bar" style="margin-top:14px;height:8px;">
+            <div class="kpi-fill" id="score-bar" style="width:0%;height:100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REPORTE ── -->
+      <div id="panel-reporte" class="panel">
+        <div class="page-title">Reporte Semanal de Producción</div>
+        <div class="page-sub">Generado automáticamente con los datos del sistema.</div>
+
+        <div style="margin-bottom:16px;">
+          <button class="btn-print" onclick="window.print()">🖨 Imprimir / Exportar PDF</button>
+        </div>
+
+        <div class="report-card" id="report-content">
+          <div class="report-header">
+            <div class="report-empresa">OptiPymes — Gestión de Procesos Productivos</div>
+            <div class="report-period">Reporte Semana 19 · 2026 | PYME Confecciones · Bogotá D.C.</div>
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Indicadores OEE Globales</div>
+            <div class="report-row"><span class="report-row-label">OEE Global</span><span class="report-row-val">72.4% ⚠</span></div>
+            <div class="report-row"><span class="report-row-label">Disponibilidad</span><span class="report-row-val">89.1% ✓</span></div>
+            <div class="report-row"><span class="report-row-label">Rendimiento</span><span class="report-row-val">84.3% ✓</span></div>
+            <div class="report-row"><span class="report-row-label">Calidad</span><span class="report-row-val">96.5% ✓</span></div>
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Producción por Línea</div>
+            <div class="report-row"><span class="report-row-label">L-01 · Pantalón Jean</span><span class="report-row-val">248 unid. | OEE 72.4%</span></div>
+            <div class="report-row"><span class="report-row-label">L-02 · Camiseta Básica</span><span class="report-row-val">412 unid. | OEE 88.1%</span></div>
+            <div class="report-row"><span class="report-row-label">L-03 · Chaqueta Impermeable</span><span class="report-row-val">91 unid. | OEE 61.3%</span></div>
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Análisis de Desperdicios (Lean)</div>
+            <div class="report-row"><span class="report-row-label">Tiempo improductivo total</span><span class="report-row-val">52 min / turno</span></div>
+            <div class="report-row"><span class="report-row-label">Unidades con defecto</span><span class="report-row-val">8 unidades (3.1%)</span></div>
+            <div class="report-row"><span class="report-row-label">Cuello de botella principal</span><span class="report-row-val">Etapa Ensamble — L-01</span></div>
+            <div class="report-row"><span class="report-row-label">Causa raíz identificada</span><span class="report-row-val">Desbalance de carga operaria</span></div>
+          </div>
+
+          <div class="report-section">
+            <div class="report-section-title">Recomendaciones de Mejora</div>
+            <div class="report-row"><span class="report-row-label">1. Rebalancear Línea L-01</span><span class="report-row-val">Prioridad Alta</span></div>
+            <div class="report-row"><span class="report-row-label">2. Mantenimiento preventivo L-03</span><span class="report-row-val">Esta semana</span></div>
+            <div class="report-row"><span class="report-row-label">3. Capacitación operarios en 5S</span><span class="report-row-val">Próximas 2 semanas</span></div>
+            <div class="report-row"><span class="report-row-label">4. Revisión de tiempos estándar</span><span class="report-row-val">Mes siguiente</span></div>
+          </div>
+
+          <div style="margin-top:24px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);">
+            Generado por OptiPymes · Ruth Alexandra Dávila Moreno · ACA 3 – Ingeniería Industrial · Mayo 2026
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USUARIOS ── -->
+      <div id="panel-usuarios" class="panel">
+        <div class="page-title">Registro de Usuarios y Roles</div>
+        <div class="page-sub">Gestión de accesos al sistema por perfil.</div>
+
+        <div class="users-grid">
+          <div class="user-card">
+            <div class="user-avatar">RM</div>
+            <div class="user-name">Rosa Martínez</div>
+            <div class="user-role">Gerente General</div>
+            <div class="user-detail">📧 r.martinez@pyme.co</div>
+            <div class="user-detail">🔐 Acceso total al sistema</div>
+            <div style="margin-top:10px;"><span class="badge badge-ok">Activo</span></div>
+          </div>
+          <div class="user-card">
+            <div class="user-avatar">JP</div>
+            <div class="user-name">Jorge Pedraza</div>
+            <div class="user-role">Supervisor de Producción</div>
+            <div class="user-detail">📧 j.pedraza@pyme.co</div>
+            <div class="user-detail">🔐 OEE, Registro, 5S, Reportes</div>
+            <div style="margin-top:10px;"><span class="badge badge-ok">Activo</span></div>
+          </div>
+          <div class="user-card">
+            <div class="user-avatar">LA</div>
+            <div class="user-name">Luz Arias</div>
+            <div class="user-role">Operario L-01</div>
+            <div class="user-detail">📧 l.arias@pyme.co</div>
+            <div class="user-detail">🔐 Solo registro de producción</div>
+            <div style="margin-top:10px;"><span class="badge badge-ok">Activo</span></div>
+          </div>
+          <div class="user-card">
+            <div class="user-avatar">CM</div>
+            <div class="user-name">Carlos Moreno</div>
+            <div class="user-role">Operario L-02</div>
+            <div class="user-detail">📧 c.moreno@pyme.co</div>
+            <div class="user-detail">🔐 Solo registro de producción</div>
+            <div style="margin-top:10px;"><span class="badge badge-ok">Activo</span></div>
+          </div>
+          <div class="user-card">
+            <div class="user-avatar">BT</div>
+            <div class="user-name">Beatriz Torres</div>
+            <div class="user-role">Operario L-03</div>
+            <div class="user-detail">📧 b.torres@pyme.co</div>
+            <div class="user-detail">🔐 Solo registro de producción</div>
+            <div style="margin-top:10px;"><span class="badge badge-ok">Activo</span></div>
+          </div>
+          <div class="user-card" style="border:1px dashed var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;cursor:pointer;" onclick="alert('Función de agregar usuario — disponible en versión completa.')">
+            <div style="font-size:28px;color:var(--border);">+</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Agregar usuario</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /layout -->
+</div><!-- /app -->
+
+<script>
+// ── Login / Logout ──────────────────────────────────────────────────────────
+function doLogin() {
+  const u = document.getElementById('login-user').value;
+  const p = document.getElementById('login-pass').value;
+  const r = document.getElementById('login-rol').value;
+  if (!u || !p) { alert('Ingrese usuario y contraseña.'); return; }
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('topbar-user-label').textContent = `${u} · ${r}`;
+  // Set today's date in form
+  document.getElementById('r-fecha').value = new Date().toISOString().split('T')[0];
+  initCharts();
+}
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── Panel navigation ────────────────────────────────────────────────────────
+function showPanel(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── OEE Calculator ──────────────────────────────────────────────────────────
+function calcularOEE() {
+  const tPlan = parseFloat(document.getElementById('r-tplan').value) || 0;
+  const tParo = parseFloat(document.getElementById('r-tparo').value) || 0;
+  const uProd = parseFloat(document.getElementById('r-uprod').value) || 0;
+  const uTeo  = parseFloat(document.getElementById('r-uteo').value)  || 1;
+  const uDef  = parseFloat(document.getElementById('r-udef').value)  || 0;
+
+  const disp = ((tPlan - tParo) / tPlan) * 100;
+  const rend = (uProd / uTeo) * 100;
+  const cal  = ((uProd - uDef) / uProd) * 100;
+  const oee  = (disp * rend * cal) / 10000;
+
+  const fmt = v => v.toFixed(1) + '%';
+  const setVal = (id, v, umbral) => {
+    const el = document.getElementById(id);
+    el.textContent = fmt(v);
+    el.className = 'result-val ' + (v >= umbral ? 'ok' : 'warn');
+  };
+
+  setVal('res-disp', disp, 85);
+  setVal('res-rend', rend, 80);
+  setVal('res-cal',  cal,  95);
+
+  const oeeEl = document.getElementById('res-oee');
+  oeeEl.textContent = fmt(oee);
+  oeeEl.style.color = oee >= 85 ? 'var(--success)' : oee >= 65 ? 'var(--warn)' : 'var(--accent2)';
+
+  const alerta = document.getElementById('res-alerta');
+  if (oee < 65) {
+    alerta.style.display = 'block';
+    alerta.className = 'alert-box';
+    alerta.textContent = '⚠ OEE Crítico: Se recomienda revisión inmediata de la línea. Identificar cuello de botella y aplicar plan de mejora Lean.';
+  } else if (oee < 85) {
+    alerta.style.display = 'block';
+    alerta.className = 'alert-box';
+    alerta.textContent = '⚠ OEE por debajo de la meta (85%). Revisar etapa de mayor pérdida y aplicar acciones correctivas.';
+  } else {
+    alerta.style.display = 'block';
+    alerta.className = 'alert-box alert-ok';
+    alerta.textContent = '✓ OEE dentro del rango objetivo. Mantener condiciones y continuar seguimiento semanal.';
+  }
+
+  document.getElementById('result-box').style.display = 'block';
+
+  // Add to history
+  const linea = document.getElementById('r-linea').value.split('·')[0].trim();
+  const fecha = document.getElementById('r-fecha').value;
+  const row = `<tr><td>${fecha}</td><td>${linea}</td><td>${fmt(disp)}</td><td>${fmt(rend)}</td><td>${fmt(cal)}</td><td><strong>${fmt(oee)}</strong></td></tr>`;
+  document.getElementById('hist-tbody').insertAdjacentHTML('afterbegin', row);
+}
+
+// ── 5S Scoring ──────────────────────────────────────────────────────────────
+function calcS() {
+  let total = 0;
+  for (let s = 1; s <= 5; s++) {
+    let cnt = 0;
+    ['a','b','c'].forEach(l => {
+      if (document.getElementById(`s${s}${l}`).checked) cnt++;
+    });
+    document.getElementById(`score-s${s}`).textContent = `${cnt}/3`;
+    total += cnt;
+  }
+  document.getElementById('score-global').textContent = `${total} / 15`;
+  const pct = (total / 15) * 100;
+  const bar = document.getElementById('score-bar');
+  bar.style.width = pct + '%';
+  bar.className = 'kpi-fill ' + (pct >= 80 ? 'ok' : pct >= 50 ? '' : 'warn');
+  const nivel = document.getElementById('score-nivel');
+  if (pct === 0) nivel.textContent = 'Sin evaluar';
+  else if (pct < 40) nivel.textContent = '🔴 Nivel Inicial — Acción urgente';
+  else if (pct < 67) nivel.textContent = '🟡 Nivel Intermedio — Mejora necesaria';
+  else if (pct < 87) nivel.textContent = '🟢 Nivel Satisfactorio — Mantener';
+  else nivel.textContent = '🏆 Nivel Óptimo — Excelente';
+}
+
+// ── Charts ──────────────────────────────────────────────────────────────────
+function initCharts() {
+  // Tendencia OEE
+  new Chart(document.getElementById('chart-tendencia'), {
+    type: 'line',
+    data: {
+      labels: ['Sem 12','Sem 13','Sem 14','Sem 15','Sem 16','Sem 17','Sem 18','Sem 19'],
+      datasets: [{
+        label: 'OEE %',
+        data: [64, 68, 71, 69, 74, 70, 73, 72.4],
+        borderColor: '#1B3A6B', backgroundColor: 'rgba(27,58,107,0.08)',
+        borderWidth: 2, pointRadius: 4, tension: 0.3, fill: true
+      },{
+        label: 'Meta 85%',
+        data: [85,85,85,85,85,85,85,85],
+        borderColor: '#C8401A', borderDash: [6,3], borderWidth: 1.5,
+        pointRadius: 0, tension: 0
+      }]
+    },
+    options: {
+      responsive: true, plugins: { legend: { labels: { font: { family: 'IBM Plex Sans', size: 11 }}}},
+      scales: {
+        y: { min: 50, max: 100, ticks: { font: { family: 'IBM Plex Mono', size: 10 }}},
+        x: { ticks: { font: { family: 'IBM Plex Sans', size: 10 }}}
+      }
+    }
+  });
+
+  // Componentes donut
+  new Chart(document.getElementById('chart-componentes'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Disponibilidad', 'Rendimiento', 'Calidad'],
+      datasets: [{
+        data: [89.1, 84.3, 96.5],
+        backgroundColor: ['#1B3A6B','#C8401A','#2D6A4F'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'IBM Plex Sans', size: 11 }, padding: 12 }}
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
